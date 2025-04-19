@@ -1,0 +1,13 @@
+info:
+  description: ''
+  title: ''
+  version: ''
+openapi: 3.0.0
+paths:
+  /docs/:
+    get:
+      operationId: docs_list
+      tags:
+      - docs
+servers:
+- url: ''
