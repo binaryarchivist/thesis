@@ -1,7 +1,7 @@
-from pathlib import Path
-import environ
 import os
+from pathlib import Path
 
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,15 +9,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -33,13 +33,14 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    'django.contrib.staticfiles',
+    "django.contrib.staticfiles",
     "debug_toolbar",
     "environ",
     "rest_framework",
     "apps.core",
     "apps.user",
     "drf_yasg",
+    "rest_framework_simplejwt",
 ]
 
 MIDDLEWARE = [
@@ -50,7 +51,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware"
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 INTERNAL_IPS = [
@@ -103,40 +104,57 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("DB_NAME"),
+        "USER": env("DB_USER"),
+        "PASSWORD": env("DB_PASSWORD"),
+        "HOST": env("DB_HOST"),
+        "PORT": env("DB_PORT"),
     }
 }
 
 SWAGGER_SETTINGS = {
-    'exclude_url_names': [],
-    'exclude_namespaces': [],
-    'api_version': '0.1',
-    'api_path': '/',
-    'relative_paths': False,
-    'enabled_methods': [
-        'get',
-        'post',
-        'put',
-        'patch',
-        'delete'
-    ],
-    'api_key': '',
-    'is_authenticated': False,
-    'is_superuser': False,
-    'unauthenticated_user': 'django.contrib.auth.models.AnonymousUser',
-    'permission_denied_handler': None,
-    'resource_access_handler': None,
-    'doc_expansion': 'none',
-    'DEFAULT_INFO': "edms_thesis.urls.api_info",
+    "exclude_url_names": [],
+    "exclude_namespaces": [],
+    "api_version": "0.1",
+    "api_path": "/",
+    "relative_paths": False,
+    "enabled_methods": ["get", "post", "put", "patch", "delete"],
+    "api_key": "",
+    "is_authenticated": False,
+    "is_superuser": False,
+    "unauthenticated_user": "django.contrib.auth.models.AnonymousUser",
+    "permission_denied_handler": None,
+    "resource_access_handler": None,
+    "doc_expansion": "none",
+    "DEFAULT_INFO": "edms_thesis.urls.api_info",
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Bearer <your_access_token>",
+        }
+    },
 }
 
-REST_FRAMEWORK = { 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema' }
-STATIC_URL = os.path.join(BASE_DIR, 'staticfiles/')
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
+STATIC_URL = os.path.join(BASE_DIR, "staticfiles/")
 
-STATIC_ROOT = BASE_DIR / 'staticfiles';
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+AUTH_USER_MODEL = "user.User"
+
+SIMPLE_JWT = {
+    "USER_ID_FIELD": "user_id",  # JWT uses this field as the user identifier
+    "USER_ID_CLAIM": "user_id",
+}
