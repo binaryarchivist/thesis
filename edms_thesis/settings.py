@@ -34,13 +34,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "rest_framework_simplejwt",
     "debug_toolbar",
     "environ",
-    "rest_framework",
+    "drf_yasg",
     "apps.core",
     "apps.user",
-    "drf_yasg",
-    "rest_framework_simplejwt"
 ]
 
 MIDDLEWARE = [
@@ -130,11 +130,11 @@ SWAGGER_SETTINGS = {
     "doc_expansion": "none",
     "DEFAULT_INFO": "edms_thesis.urls.api_info",
     "SECURITY_DEFINITIONS": {
-    "Bearer": {
-        "type": "apiKey",
-        "in":   "header",
-        "name": "Authorization",
-        "description": "Bearer <your_access_token>",
+        "Bearer": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Bearer <your_access_token>",
         }
     },
 }
@@ -142,7 +142,7 @@ SWAGGER_SETTINGS = {
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication. ",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -155,6 +155,6 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 AUTH_USER_MODEL = "user.User"
 
 SIMPLE_JWT = {
-    'USER_ID_FIELD': 'user_id', # JWT uses this field as the user identifier
-    'USER_ID_CLAIM': 'user_id',
+    "USER_ID_FIELD": "user_id",  # JWT uses this field as the user identifier
+    "USER_ID_CLAIM": "user_id",
 }
