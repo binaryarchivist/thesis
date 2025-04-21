@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.documents.models import DocumentVersion
+from apps.user.models.user import User
 
 
 class DocumentVersionDetailAPIView(APIView):
@@ -28,7 +29,10 @@ class DocumentVersionDetailAPIView(APIView):
 
     @swagger_auto_schema(tags=["Documents Versions"])
     def get(self, request, pk):
-        ver = self.get_object(pk, request.user)
+        request_user = User.objects.get(email=request.user)
+        if request_user is None:
+            return
+        ver = self.get_object(pk, request_user)
         data = model_to_dict(
             ver, fields=["id", "version_number", "file", "created_at", "created_by"]
         )
@@ -36,6 +40,9 @@ class DocumentVersionDetailAPIView(APIView):
 
     @swagger_auto_schema(tags=["Documents Versions"])
     def delete(self, request, pk):
-        ver = self.get_object(pk, request.user)
+        request_user = User.objects.get(email=request.user)
+        if request_user is None:
+            return
+        ver = self.get_object(pk, request_user)
         ver.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

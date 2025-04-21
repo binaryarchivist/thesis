@@ -6,3 +6,4 @@ staticfiles/
 *.pyo
 *.pyd
 *.db        
+media/

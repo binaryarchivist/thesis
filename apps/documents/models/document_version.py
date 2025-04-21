@@ -15,7 +15,7 @@ class DocumentVersion(BaseModel):
     created_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="created_by",
+        related_name="created_versions"
     )
 
     class Meta:

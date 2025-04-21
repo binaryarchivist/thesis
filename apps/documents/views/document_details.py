@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.documents.models import Document
+from apps.user.models.user import User
 
 
 class DocumentDetailAPIView(APIView):
@@ -15,13 +16,19 @@ class DocumentDetailAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get_object(self, document_id, user):
+    def get_object(self, document_id, user_email):
         try:
-            return Document.objects.get(document_id=document_id, user=user)
+            request_user = User.objects.get(email=user_email)
+            if request_user is None:
+                return Response(
+                    {"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST
+                )
+            return Document.objects.get(document_id=document_id, user=request_user)
         except Document.DoesNotExist:
             raise Http404
 
     def get(self, request, document_id):
+     
         doc = self.get_object(document_id, request.user)
         data = model_to_dict(
             doc,
