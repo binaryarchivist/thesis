@@ -16,19 +16,23 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path("api/auth/", include(("apps.user.urls", "auth"), namespace="auth")),
     path(
-        "api/",
+        "api/documents/",
         include(
-            [
-                path("core/", include(("apps.core.urls", "core"), namespace="core")),
-                path("auth/", include(("apps.user.urls", "auth"), namespace="auth")),
-                path(
-                    "docs/",
-                    schema_view.with_ui("swagger", cache_timeout=0),
-                    name="swagger-schema",
-                ),
-            ]
+            ("apps.documents.urls.documents_urls", "documents"), namespace="documents"
         ),
+    ),
+    path(
+        "api/documents/versions/",
+        include(
+            ("apps.documents.urls.documents_versions_urls", "documents-versions"),
+            namespace="documents-versions",
+        ),
+    ),
+    # Swagger UI
+    path(
+        "api/docs/", schema_view.with_ui("swagger", cache_timeout=0), name="swagger-ui"
     ),
 ]
 

@@ -10,7 +10,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-
+DEBUG = True
 
 SECRET_KEY = env("SECRET_KEY")
 
@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "apps.core",
     "apps.user",
+    "apps.documents",
 ]
 
 MIDDLEWARE = [

@@ -5,6 +5,8 @@ from rest_framework_simplejwt.views import (TokenObtainPairView,
 
 from .views.auth import AuthViewSet
 
+app_name = "auth"
+
 router = DefaultRouter()
 router.register(r"", AuthViewSet, basename="auth")
 
