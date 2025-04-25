@@ -7,11 +7,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from apps.documents.models import Document, DocumentVersion
-from apps.user.models.user import User
+from apps.documents.models import Document
 
 
-class DocumentVersionListCreateAPIView(APIView):
+class DocumentVersionListAPIView(APIView):
     swagger_tags = ["Documents Versions"]
 
     authentication_classes = [JWTAuthentication]
@@ -35,28 +34,3 @@ class DocumentVersionListCreateAPIView(APIView):
             for ver in versions
         ]
         return Response(data)
-
-    @swagger_auto_schema(tags=["Documents Versions"])
-    def post(self, request, document_id):
-        request_user = User.objects.get(email=request.user)
-        if request_user is None:
-            return Response({"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST)
-        doc = self.get_document(document_id, request_user)
-        # file must be in request.FILES
-        upload = request.FILES.get("file")
-        if not upload:
-            return Response(
-                {"error": "File is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # version_number auto‐assigned in model.save()
-        
-        ver = DocumentVersion(
-            document=doc, file=upload, created_by=request_user
-        )
-        ver.save()
-
-        data = model_to_dict(
-            ver, fields=["id", "version_number", "file", "created_at", "created_by"]
-        )
-        return Response(data, status=status.HTTP_201_CREATED)

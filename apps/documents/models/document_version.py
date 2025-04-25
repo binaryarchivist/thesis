@@ -13,9 +13,7 @@ class DocumentVersion(BaseModel):
     version_number = models.PositiveIntegerField()
     file = models.FileField(upload_to="documents/")
     created_by = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="created_versions"
+        User, on_delete=models.CASCADE, related_name="created_versions"
     )
 
     class Meta:

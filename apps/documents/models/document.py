@@ -12,7 +12,9 @@ class Document(BaseModel):
     )
     title = models.CharField(max_length=128)
     description = models.TextField(blank=True, null=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_documents")
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="created_documents"
+    )
 
     class Meta:
         db_table = "documents"

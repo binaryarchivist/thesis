@@ -46,3 +46,28 @@ class DocumentVersionDetailAPIView(APIView):
         ver = self.get_object(pk, request_user)
         ver.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @swagger_auto_schema(tags=["Documents Versions"])
+    def post(self, request, document_id):
+        request_user = User.objects.get(email=request.user)
+        if request_user is None:
+            return Response(
+                {"error": "User not found."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        doc = self.get_document(document_id, request_user)
+        # file must be in request.FILES
+        upload = request.FILES.get("file")
+        if not upload:
+            return Response(
+                {"error": "File is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # version_number auto‐assigned in model.save()
+
+        ver = DocumentVersion(document=doc, file=upload, created_by=request_user)
+        ver.save()
+
+        data = model_to_dict(
+            ver, fields=["id", "version_number", "file", "created_at", "created_by"]
+        )
+        return Response(data, status=status.HTTP_201_CREATED)

@@ -1,4 +1,4 @@
-from .document_details import DocumentDetailAPIView
+from .document_detail import DocumentDetailAPIView
 from .document_version_detail import DocumentVersionDetailAPIView
-from .document_version_list import DocumentVersionListCreateAPIView
-from .documents import DocumentListCreateAPIView
+from .document_version_list import DocumentVersionListAPIView
+from .documents import DocumentListAPIView

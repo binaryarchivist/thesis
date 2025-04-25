@@ -1,15 +1,14 @@
 from django.urls import path
 
-from ..views import (DocumentVersionDetailAPIView,
-                     DocumentVersionListCreateAPIView)
+from ..views import DocumentVersionDetailAPIView, DocumentVersionListAPIView
 
 app_name = "documents-versions"
 
 urlpatterns = [
     path(
         "<uuid:document_id>/versions/",
-        DocumentVersionListCreateAPIView.as_view(),
-        name="doc-version-list-create",
+        DocumentVersionListAPIView.as_view(),
+        name="doc-version-list",
     ),
     path(
         "versions/<int:pk>/",
