@@ -1,9 +1,0 @@
-venv
-__pycache__/
-.env
-staticfiles/
-*.pyc
-*.pyo
-*.pyd
-*.db        
-media/
