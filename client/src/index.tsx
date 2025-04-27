@@ -2,24 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import AppRoutes from 'routes/AppRoutes';
 
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { AuthProvider } from 'contexts/AuthContext';
 
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-});
+import { AuthProvider } from 'contexts/AuthContext';
+import { theme } from 'theme';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

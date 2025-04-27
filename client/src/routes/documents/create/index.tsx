@@ -1,5 +1,3 @@
-// src/pages/documents/DocumentCreatePage.tsx
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -9,11 +7,18 @@ import {
   TextField,
   Button,
   Alert,
+  Backdrop,
   CircularProgress,
+  FormControl,
+  InputLabel,
   Select,
   MenuItem,
   SelectChangeEvent,
+  Paper,
+  Snackbar,
+  useTheme,
 } from '@mui/material';
+import { motion } from 'framer-motion';
 import DocumentsApi from 'api/DocumentsApi';
 import UsersApi from 'api/UseresApi';
 
@@ -24,24 +29,60 @@ interface UserLookup {
 
 export default function DocumentCreatePage() {
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [userList, setUserList] = useState<UserLookup[]>([]);
-  const [selectedUserID, setSelectedUserID] = useState<string | null>('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedUserID, setSelectedUserID] = useState<string>('');
+
+  const [submitting, setSubmitting] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+
+  useEffect(() => {
+    if (!file) {
+      return setPreviewUrl(null);
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  useEffect(() => {
+    UsersApi.getUsers()
+      .then((r) => setUserList(r.data))
+      .catch(() =>
+        setSnackbar({
+          open: true,
+          message: 'Failed to load users',
+          severity: 'error',
+        })
+      );
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !file || !selectedUserID) {
-      setError('Title, file and assignee are required.');
-      return;
+    if (!title || !file || !selectedUserID) {
+      return setSnackbar({
+        open: true,
+        message: 'Please fill all required fields',
+        severity: 'error',
+      });
     }
 
-    setLoading(true);
-    setError(null);
+    setSubmitting(true);
     try {
       await DocumentsApi.create(
         title.trim(),
@@ -49,114 +90,153 @@ export default function DocumentCreatePage() {
         selectedUserID,
         description.trim()
       );
-      navigate('/', { replace: true });
+      setSnackbar({
+        open: true,
+        message: 'Document created!',
+        severity: 'success',
+      });
+      setTimeout(() => navigate('/', { replace: true }), 1000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create document.');
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || 'Submission failed',
+        severity: 'error',
+      });
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
-
-  const fetchUsersList = async () => {
-    try {
-      const response = await UsersApi.getUsers();
-      setUserList(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch users.');
-    }
-  };
-
-  useEffect(() => {
-    fetchUsersList();
-  }, []);
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          New Document
-        </Typography>
+    <Container
+      maxWidth="lg"
+      sx={{ position: 'relative', minHeight: '80vh', py: 4 }}
+    >
+      <Backdrop
+        open={submitting}
+        sx={{ zIndex: theme.zIndex.drawer + 1, color: '#fff' }}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} variant="filled">
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
 
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
-        >
-          <TextField
-            label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            fullWidth
-          />
+      <Typography variant="h4" gutterBottom>
+        New Document
+      </Typography>
 
-          <TextField
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            multiline
-            rows={3}
-            fullWidth
-          />
-
-          <Button variant="outlined" component="label">
-            {file ? file.name : 'Select File'}
-            <input
-              type="file"
-              hidden
-              onChange={(e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  setFile(e.target.files[0]);
-                }
-              }}
-            />
-          </Button>
-
-          <Select
-            label="Assignee"
-            value={selectedUserID || ''}
-            fullWidth
-            onChange={(event: SelectChangeEvent) => {
-              setSelectedUserID(event.target.value);
-            }}
-            required
+      <Box
+        component={motion.div}
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0, y: 20 },
+          visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+        }}
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: 4,
+        }}
+      >
+        <Paper elevation={2} sx={{ flex: 1, p: 3 }}>
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
           >
-            {userList.map((user) => (
-              <MenuItem key={user.user_id} value={user.user_id}>
-                {user.email}
-              </MenuItem>
-            ))}
-          </Select>
-
-          <Box sx={{ position: 'relative' }}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading}
+            <TextField
+              label="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
               fullWidth
-            >
-              Create
-            </Button>
-            {loading && (
-              <CircularProgress
-                size={24}
-                sx={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  marginTop: '-12px',
-                  marginLeft: '-12px',
+            />
+            <TextField
+              label="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              fullWidth
+              multiline
+              rows={3}
+            />
+            <Button variant="outlined" component="label">
+              {file ? file.name : 'Select File'}
+              <input
+                type="file"
+                hidden
+                onChange={(e) => {
+                  if (e.target.files?.[0]) setFile(e.target.files[0]);
                 }}
               />
-            )}
+            </Button>
+            <FormControl fullWidth required>
+              <InputLabel id="assignee-label">Assignee</InputLabel>
+              <Select
+                labelId="assignee-label"
+                value={selectedUserID}
+                label="Assignee"
+                onChange={(e: SelectChangeEvent) =>
+                  setSelectedUserID(e.target.value)
+                }
+              >
+                {userList.map((u) => (
+                  <MenuItem key={u.user_id} value={u.user_id}>
+                    {u.email}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Box sx={{ mt: 2 }}>
+              <Button type="submit" variant="contained" size="large" fullWidth>
+                Create
+              </Button>
+            </Box>
           </Box>
-        </Box>
+        </Paper>
+
+        {previewUrl && (
+          <Paper
+            component={motion.div}
+            elevation={2}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            sx={{
+              flex: 1,
+              p: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 300,
+            }}
+          >
+            {file!.type.startsWith('image/') ? (
+              <Box
+                component="img"
+                src={previewUrl}
+                alt="Preview"
+                sx={{ maxWidth: '100%', maxHeight: '100%' }}
+              />
+            ) : (
+              <Box
+                component="iframe"
+                src={previewUrl}
+                title="Preview"
+                sx={{ width: '100%', height: 400, border: 'none' }}
+              />
+            )}
+          </Paper>
+        )}
       </Box>
     </Container>
   );

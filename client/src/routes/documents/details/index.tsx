@@ -1,6 +1,4 @@
-// src/pages/documents/DocumentDetailsPage.tsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -12,21 +10,21 @@ import {
   Alert,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
+  Backdrop,
+  Snackbar,
+  useTheme,
 } from '@mui/material';
+import { motion } from 'framer-motion';
 import DocumentsApi from 'api/DocumentsApi';
-
-interface DocumentDetail {
-  document_id: string;
-  title: string;
-  description: string;
-  created_at: string;
-  created_by: string;
-  assigned_to: string | null;
-  status: string;
-  allowed_actions: string[];
-}
+import UsersApi from 'api/UseresApi';
 
 interface Version {
   id: number;
@@ -37,97 +35,149 @@ interface Version {
   created_by: string;
 }
 
-const DocumentActions = {
-  approve: 'approve',
-  reject: 'reject',
-  archive: 'archive',
-  esign: 'esign',
-  resubmit: 'resubmit',
-};
+interface DocumentDetail {
+  document_id: string;
+  title: string;
+  description: string;
+  created_at: string;
+  created_by: string;
+  assigned_to: string | null;
+  status: string;
+  allowed_actions: string[];
+  versions: Version[];
+}
 
 export default function DocumentDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
-  const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [actionLoading, setActionLoading] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-
+  const [selectedVer, setSelectedVer] = useState<Version | null>(null);
   const [newFile, setNewFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const loadDocument = async () => {
+  const [users, setUsers] = useState<{ user_id: string; email: string }[]>([]);
+  const [assignedTo, setAssignedTo] = useState<string>('');
+
+  const [busy, setBusy] = useState(false);
+  const [snack, setSnack] = useState<{
+    open: boolean;
+    msg: string;
+    sev: 'success' | 'error';
+  }>({
+    open: false,
+    msg: '',
+    sev: 'success',
+  });
+
+  const loadDocument = useCallback(async (docId: string) => {
     setLoading(true);
     try {
-      if (!id) {
-        setError('Document ID is required');
-        return;
-      }
-      const { data } = (await DocumentsApi.get(id)) as any;
-      setDoc(data);
-      setVersions(data.versions);
+      const { data } = await DocumentsApi.get(docId);
+      setDoc(data as any);
+      setSelectedVer(data.versions[0] || null);
+      setAssignedTo(data.assigned_to || '');
     } catch (e: any) {
       setError(e.response?.data?.detail || 'Failed to load document');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadDocument();
   }, []);
 
-  const handleAction = async (
-    action: 'approve' | 'reject' | 'archive' | 'esign'
-  ) => {
+  useEffect(() => {
     if (!id) {
       return;
     }
-    setActionLoading(true);
-    setActionError(null);
-    try {
-      switch (action) {
-        case 'approve':
-          await DocumentsApi.approve(id);
-          break;
-        case 'reject':
-          await DocumentsApi.reject(id);
-          break;
-        case 'archive':
-          await DocumentsApi.archive(id);
-          break;
-        case 'esign':
-          await DocumentsApi.sign(id);
-          break;
-      }
-      const { data } = (await DocumentsApi.get(id)) as any;
-      setDoc(data);
-    } catch (e: any) {
-      setActionError(e.response?.data?.detail || 'Action failed');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+    loadDocument(id);
+  }, [id, loadDocument]);
 
-  const handleUpload = async () => {
-    if (!id || !newFile) return;
-    setUploading(true);
-    setUploadError(null);
+  const loadUsers = useCallback(async () => {
     try {
-      await DocumentsApi.save(id, { ...doc, file: newFile });
-      await loadDocument();
-      setNewFile(null);
-    } catch (e: any) {
-      setUploadError(e.response?.data?.error || 'Upload failed');
-    } finally {
-      setUploading(false);
+      const { data } = await UsersApi.getUsers();
+      setUsers(data);
+    } catch {
+      console.error('Failed to load users');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  /** Generic action (approve/reject/esign/archive) */
+  const handleAction = useCallback(
+    async (action: 'approve' | 'reject' | 'esign' | 'archive') => {
+      if (!id) return;
+      setBusy(true);
+      try {
+        await DocumentsApi[action](id);
+        await loadDocument(id);
+        setSnack({ open: true, msg: `${action} succeeded`, sev: 'success' });
+      } catch {
+        setSnack({ open: true, msg: `${action} failed`, sev: 'error' });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [id, loadDocument]
+  );
+
+  /** Handle version selection */
+  function handleSelectVersion(version: Version) {
+    setSelectedVer(version);
+    setNewFile(null);
+  }
+
+  /** Handle file‐input change */
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setNewFile(file);
+  }
+
+  /** Upload a new version */
+  async function handleUpload() {
+    if (!id || !newFile) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await DocumentsApi.save(id, {
+        ...doc,
+        file: newFile,
+      });
+      await loadDocument(id);
+      setNewFile(null);
+      setSnack({ open: true, msg: 'Version uploaded', sev: 'success' });
+    } catch (e: any) {
+      setSnack({
+        open: true,
+        msg: e.response?.data?.error || 'Upload failed',
+        sev: 'error',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleAssign(e: SelectChangeEvent) {
+    setAssignedTo(e.target.value);
+    setSnack({ open: true, msg: 'Assignee updated (mock)', sev: 'success' });
+  }
+
+  function handleBack() {
+    navigate(-1);
+  }
+
+  function handleCloseSnack() {
+    setSnack((s) => ({ ...s, open: false }));
+  }
+
+  const previewUrl = newFile
+    ? URL.createObjectURL(newFile)
+    : selectedVer?.download_url;
 
   if (loading) {
     return (
@@ -136,165 +186,198 @@ export default function DocumentDetailsPage() {
       </Box>
     );
   }
-  if (error || !doc || !id) {
+  if (error || !doc) {
     return <Alert severity="error">{error || 'Document not found'}</Alert>;
   }
 
-  const ApproveAction = () => (
-    <Button
-      variant="contained"
-      color="success"
-      onClick={() => handleAction('approve')}
-      disabled={actionLoading}
-    >
-      Approve
-    </Button>
-  );
-
-  const RejectAction = () => (
-    <Button
-      variant="contained"
-      color="error"
-      onClick={() => handleAction('reject')}
-      disabled={actionLoading}
-    >
-      Reject
-    </Button>
-  );
-
-  const ArchiveAction = () => (
-    <Button
-      variant="outlined"
-      onClick={() => handleAction('archive')}
-      disabled={actionLoading}
-    >
-      Archive
-    </Button>
-  );
-
-  const ESignAction = () => (
-    <Button
-      variant="contained"
-      color="primary"
-      onClick={() => handleAction('esign')}
-      disabled={actionLoading}
-    >
-      E-Sign
-    </Button>
-  );
-
   return (
-    <Container maxWidth="md" sx={{ mt: 4 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
+    <Container maxWidth="lg" sx={{ position: 'relative', py: 4 }}>
+      <Backdrop
+        open={busy}
+        sx={{ zIndex: theme.zIndex.drawer + 1, color: '#fff' }}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
+
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={handleCloseSnack}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity={snack.sev} variant="filled">
+          {snack.msg}
+        </Alert>
+      </Snackbar>
+
+      <Button onClick={handleBack} sx={{ mb: 2 }}>
         &larr; Back
       </Button>
 
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          {doc.title}
-        </Typography>
-        <Typography variant="body1" gutterBottom>
-          {doc.description || '—'}
-        </Typography>
-        <Typography variant="caption" display="block">
-          Created at: {new Date(doc.created_at).toLocaleString()}
-        </Typography>
-        <Typography variant="caption" display="block">
-          Created by: {doc.created_by}
-        </Typography>
-        <Typography variant="caption" display="block">
-          Assigned to: {doc.assigned_to || '—'}
-        </Typography>
-        <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-          Status: {doc.status}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {doc.allowed_actions.includes(DocumentActions.approve) && (
-            <ApproveAction />
-          )}
-          {doc.allowed_actions.includes(DocumentActions.reject) && (
-            <RejectAction />
-          )}
-          {doc.allowed_actions.includes(DocumentActions.archive) && (
-            <ArchiveAction />
-          )}
-          {doc.allowed_actions.includes(DocumentActions.esign) && (
-            <ESignAction />
-          )}
-          {actionError && (
-            <Alert severity="error" sx={{ width: '100%', mt: 1 }}>
-              {actionError}
-            </Alert>
-          )}
-        </Box>
-      </Paper>
-
-      {/* Version history */}
-      <Paper sx={{ p: 2, mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          Version History
-        </Typography>
-        <List>
-          {versions.map((v) => (
-            <React.Fragment key={v.id}>
-              <ListItem>
-                <ListItemText
-                  primary={`v${v.version_number} — ${new Date(v.created_at).toLocaleString()}`}
-                  secondary={`Uploaded by ${v.created_by}`}
-                />
-                <Button
-                  size="small"
-                  component="a"
-                  href={v.download_url}
-                  target="_blank"
-                  rel="noopener"
-                >
-                  View
-                </Button>
-              </ListItem>
-              <Divider component="li" />
-            </React.Fragment>
-          ))}
-          {versions.length === 0 && (
-            <Typography>No versions uploaded yet.</Typography>
-          )}
-        </List>
-      </Paper>
-
-      {doc.allowed_actions.includes(DocumentActions.resubmit) && (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Upload New Version
+      <Box
+        component={motion.div}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: 4,
+        }}
+      >
+        <Paper elevation={2} sx={{ flex: 1, p: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            {doc.title}
           </Typography>
-          {uploadError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {uploadError}
-            </Alert>
-          )}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button variant="outlined" component="label">
-              {newFile ? newFile.name : 'Select File'}
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    setNewFile(e.target.files[0]);
-                  }
-                }}
-              />
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleUpload}
-              disabled={!newFile || uploading}
-            >
-              Update
-            </Button>
-            {uploading && <CircularProgress size={24} />}
+          <Typography variant="body1" gutterBottom>
+            {doc.description || '—'}
+          </Typography>
+
+          <Typography variant="caption" display="block">
+            Created at: {new Date(doc.created_at).toLocaleString()}
+          </Typography>
+          <Typography variant="caption" display="block" gutterBottom>
+            Created by: {doc.created_by}
+          </Typography>
+
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Assignee</InputLabel>
+            <Select value={assignedTo} label="Assignee" onChange={handleAssign}>
+              {users.map((u) => (
+                <MenuItem key={u.user_id} value={u.user_id}>
+                  {u.email}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Typography variant="subtitle2" sx={{ mt: 2 }}>
+            Status: {doc.status}
+          </Typography>
+
+          <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {doc.allowed_actions.includes('approve') && (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => handleAction('approve')}
+              >
+                Approve
+              </Button>
+            )}
+            {doc.allowed_actions.includes('reject') && (
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => handleAction('reject')}
+              >
+                Reject
+              </Button>
+            )}
+            {doc.allowed_actions.includes('esign') && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => handleAction('esign')}
+              >
+                E-Sign
+              </Button>
+            )}
+            {doc.allowed_actions.includes('archive') && (
+              <Button
+                variant="outlined"
+                onClick={() => handleAction('archive')}
+              >
+                Archive
+              </Button>
+            )}
+            {doc.allowed_actions.includes('resubmit') && (
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={() => setNewFile(null)}
+              >
+                Resubmit
+              </Button>
+            )}
           </Box>
+
+          <Typography variant="h6" sx={{ mt: 3 }}>
+            Version History
+          </Typography>
+          <List dense>
+            {doc.versions.map((v) => (
+              <React.Fragment key={v.id}>
+                <ListItem disablePadding>
+                  <ListItemButton onClick={() => handleSelectVersion(v)}>
+                    <ListItemText
+                      primary={`v${v.version_number} • ${new Date(v.created_at).toLocaleString()}`}
+                      secondary={v.file_name}
+                    />
+                  </ListItemButton>
+                </ListItem>
+                <Divider component="li" />
+              </React.Fragment>
+            ))}
+          </List>
+
+          {doc.allowed_actions.includes('resubmit') && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h6">Upload New Version</Typography>
+              {newFile === null && (
+                <Button variant="outlined" component="label" sx={{ mt: 1 }}>
+                  Select File
+                  <input type="file" hidden onChange={handleFileChange} />
+                </Button>
+              )}
+              {newFile && (
+                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                  <Typography>{newFile.name}</Typography>
+                  <Button variant="contained" onClick={handleUpload}>
+                    Upload
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
         </Paper>
-      )}
+
+        <Paper
+          elevation={2}
+          component={motion.div}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          sx={{
+            flex: 1,
+            p: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 400,
+          }}
+        >
+          {previewUrl ? (
+            /\.(png|jpe?g|gif)$/i.test(previewUrl) ? (
+              <Box
+                component="img"
+                src={previewUrl}
+                alt="Preview"
+                sx={{ maxWidth: '100%', maxHeight: '100%' }}
+              />
+            ) : (
+              <Box
+                component="iframe"
+                src={previewUrl}
+                title="Preview"
+                sx={{ width: '100%', height: 500, border: 'none' }}
+              />
+            )
+          ) : (
+            <Typography>Select a version or file to preview</Typography>
+          )}
+        </Paper>
+      </Box>
     </Container>
   );
 }

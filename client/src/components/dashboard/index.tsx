@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
@@ -13,11 +13,21 @@ import {
   AppBar,
   IconButton,
 } from '@mui/material';
+import { motion } from 'framer-motion';
 import MenuIcon from '@mui/icons-material/Menu';
 import DescriptionIcon from '@mui/icons-material/Description';
-import AddIcon from '@mui/icons-material/Add';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
 const drawerWidth = 240;
+
+const navItems = [
+  { label: 'Documents', icon: <DescriptionIcon />, to: '/' },
+  {
+    label: 'New Document',
+    icon: <AddCircleOutlineIcon />,
+    to: '/documents/new',
+  },
+];
 
 export default function DashboardLayout({
   children,
@@ -26,30 +36,40 @@ export default function DashboardLayout({
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+  const { pathname } = useLocation();
 
   const drawer = (
-    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
-      <Typography variant="h6" sx={{ my: 2 }}>
-        EDMS
-      </Typography>
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton component={Link} to="/">
-            <ListItemIcon>
-              <DescriptionIcon />
-            </ListItemIcon>
-            <ListItemText primary="Documents" />
-          </ListItemButton>
-        </ListItem>
-        <ListItem disablePadding>
-          <ListItemButton component={Link} to="/documents/new">
-            <ListItemIcon>
-              <AddIcon />
-            </ListItemIcon>
-            <ListItemText primary="New Document" />
-          </ListItemButton>
-        </ListItem>
+    <Box
+      sx={{
+        textAlign: 'center',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Box sx={{ py: 3 }}>
+        <Typography variant="h6" color="inherit">
+          EDMS
+        </Typography>
+      </Box>
+      <List sx={{ flexGrow: 1 }}>
+        {navItems.map((item) => (
+          <ListItem key={item.to} disablePadding>
+            <ListItemButton
+              component={Link}
+              to={item.to}
+              selected={pathname === item.to}
+            >
+              <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          </ListItem>
+        ))}
       </List>
+      <Box sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+        <Typography variant="body2">Welcome</Typography>
+        <Typography variant="subtitle2"></Typography>
+      </Box>
     </Box>
   );
 
@@ -105,7 +125,10 @@ export default function DashboardLayout({
         </Drawer>
       </Box>
       <Box
-        component="main"
+        component={motion.main}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
         sx={{
           flexGrow: 1,
           p: 3,

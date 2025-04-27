@@ -59,6 +59,7 @@ class DocumentListAPIView(APIView):
                 "created_by": doc.created_by.email,
                 "assigned_to": doc.assigned_to.email,
                 "status": doc.status,
+                "updated_at": doc.updated_at.isoformat(),
             }
 
             data.append(obj)

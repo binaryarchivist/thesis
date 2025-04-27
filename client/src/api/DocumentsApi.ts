@@ -7,6 +7,7 @@ export interface Document {
   assigned_to: string;
   status: string;
   created_at: string;
+  updated_at: string;
   created_by: string;
   versions: any[];
 }
@@ -42,7 +43,6 @@ export default class DocumentsApi {
     });
   }
 
-  /** Create a new document + initial version */
   static save(id: string, document: any) {
     const { title, description, file } = document;
     const fd = new FormData();
@@ -71,7 +71,7 @@ export default class DocumentsApi {
   static archive(document_id: string) {
     return client.put(`/documents/${document_id}/action/archive/`);
   }
-  static sign(document_id: string) {
+  static esign(document_id: string) {
     return client.put(`/documents/${document_id}/action/sign/`);
   }
 }
