@@ -108,9 +108,18 @@ export default function DocumentCreatePage() {
   };
 
   return (
-    <Container
+    <Box
+      component="div"
       maxWidth="lg"
-      sx={{ position: 'relative', minHeight: '80vh', py: 4 }}
+      sx={{
+        width: '100vw',
+        height: '100vh',
+        position: 'relative',
+        p: 4,
+        boxSizing: 'border-box',
+        overflow: 'auto',
+        justifySelf: "center"
+      }}
     >
       <Backdrop
         open={submitting}
@@ -146,6 +155,7 @@ export default function DocumentCreatePage() {
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           gap: 4,
+          height: '80%',   
         }}
       >
         <Paper elevation={2} sx={{ flex: 1, p: 3 }}>
@@ -217,7 +227,6 @@ export default function DocumentCreatePage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              minHeight: 300,
             }}
           >
             {file!.type.startsWith('image/') ? (
@@ -232,12 +241,12 @@ export default function DocumentCreatePage() {
                 component="iframe"
                 src={previewUrl}
                 title="Preview"
-                sx={{ width: '100%', height: 400, border: 'none' }}
+                sx={{ width: '100%', height: "100%", border: 'none' }}
               />
             )}
           </Paper>
         )}
       </Box>
-    </Container>
+    </Box>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -25,6 +25,7 @@ import {
 import { motion } from 'framer-motion';
 import DocumentsApi from 'api/DocumentsApi';
 import UsersApi from 'api/UseresApi';
+import { getAccessToken } from 'contexts/AuthContext';
 
 interface Version {
   id: number;
@@ -58,6 +59,7 @@ export default function DocumentDetailsPage() {
 
   const [selectedVer, setSelectedVer] = useState<Version | null>(null);
   const [newFile, setNewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const [users, setUsers] = useState<{ user_id: string; email: string }[]>([]);
   const [assignedTo, setAssignedTo] = useState<string>('');
@@ -87,6 +89,75 @@ export default function DocumentDetailsPage() {
     }
   }, []);
 
+    /** Generic action (approve/reject/esign/archive) */
+    const handleAction = useCallback(
+      async (action: 'approve' | 'reject' | 'esign' | 'archive') => {
+        if (!id) return;
+        setBusy(true);
+        try {
+          await DocumentsApi[action](id);
+          await loadDocument(id);
+          setSnack({ open: true, msg: `${action} succeeded`, sev: 'success' });
+        } catch {
+          setSnack({ open: true, msg: `${action} failed`, sev: 'error' });
+        } finally {
+          setBusy(false);
+        }
+      },
+      [id, loadDocument]
+    );
+  
+    /** Handle version selection */
+    function handleSelectVersion(version: Version) {
+      setSelectedVer(version);
+      setNewFile(null);
+    }
+  
+    /** Handle file‐input change */
+    function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+      const file = e.target.files?.[0] ?? null;
+      setNewFile(file);
+    }
+  
+    /** Upload a new version */
+    async function handleUpload() {
+      if (!id || !newFile) {
+        return;
+      }
+      setBusy(true);
+      try {
+        await DocumentsApi.save(id, {
+          ...doc,
+          file: newFile,
+        });
+        await loadDocument(id);
+        setNewFile(null);
+        setSnack({ open: true, msg: 'Version uploaded', sev: 'success' });
+      } catch (e: any) {
+        setSnack({
+          open: true,
+          msg: e.response?.data?.error || 'Upload failed',
+          sev: 'error',
+        });
+      } finally {
+        setBusy(false);
+      }
+    }
+  
+    function handleAssign(e: SelectChangeEvent) {
+      setAssignedTo(e.target.value);
+      setSnack({ open: true, msg: 'Assignee updated (mock)', sev: 'success' });
+    }
+  
+    function handleBack() {
+      navigate(-1);
+    }
+  
+    function handleCloseSnack() {
+      setSnack((s) => ({ ...s, open: false }));
+    }
+  
+
   useEffect(() => {
     if (!id) {
       return;
@@ -107,91 +178,56 @@ export default function DocumentDetailsPage() {
     loadUsers();
   }, [loadUsers]);
 
-  /** Generic action (approve/reject/esign/archive) */
-  const handleAction = useCallback(
-    async (action: 'approve' | 'reject' | 'esign' | 'archive') => {
-      if (!id) return;
-      setBusy(true);
-      try {
-        await DocumentsApi[action](id);
-        await loadDocument(id);
-        setSnack({ open: true, msg: `${action} succeeded`, sev: 'success' });
-      } catch {
-        setSnack({ open: true, msg: `${action} failed`, sev: 'error' });
-      } finally {
-        setBusy(false);
+  useEffect(() => {
+    // clean up any old blob‐URLs
+    let active = true
+    let blobUrl: string | null = null
+  
+    async function loadPreview() {
+      if (newFile) {
+        // local file → immediate preview
+        blobUrl = URL.createObjectURL(newFile)
+        setPreviewUrl(blobUrl)
+        return
       }
-    },
-    [id, loadDocument]
-  );
-
-  /** Handle version selection */
-  function handleSelectVersion(version: Version) {
-    setSelectedVer(version);
-    setNewFile(null);
-  }
-
-  /** Handle file‐input change */
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
-    setNewFile(file);
-  }
-
-  /** Upload a new version */
-  async function handleUpload() {
-    if (!id || !newFile) {
-      return;
+  
+      if (!selectedVer) {
+        setPreviewUrl(null)
+        return
+      }
+  
+      try {
+        const res = await fetch(selectedVer.download_url, {
+          headers: { Authorization: `Bearer ${getAccessToken()}` },
+        })
+        if (!res.ok) throw new Error('Fetch failed')
+        const blob = await res.blob()
+        if (!active) return
+        blobUrl = URL.createObjectURL(blob)
+        setPreviewUrl(blobUrl)
+      } catch {
+        setSnack({
+          open: true,
+          msg: 'Failed to load preview',
+          sev: 'error',
+        })
+      }
     }
-    setBusy(true);
-    try {
-      await DocumentsApi.save(id, {
-        ...doc,
-        file: newFile,
-      });
-      await loadDocument(id);
-      setNewFile(null);
-      setSnack({ open: true, msg: 'Version uploaded', sev: 'success' });
-    } catch (e: any) {
-      setSnack({
-        open: true,
-        msg: e.response?.data?.error || 'Upload failed',
-        sev: 'error',
-      });
-    } finally {
-      setBusy(false);
+  
+    loadPreview()
+  
+    return () => {
+      active = false
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
     }
-  }
-
-  function handleAssign(e: SelectChangeEvent) {
-    setAssignedTo(e.target.value);
-    setSnack({ open: true, msg: 'Assignee updated (mock)', sev: 'success' });
-  }
-
-  function handleBack() {
-    navigate(-1);
-  }
-
-  function handleCloseSnack() {
-    setSnack((s) => ({ ...s, open: false }));
-  }
-
-  const previewUrl = newFile
-    ? URL.createObjectURL(newFile)
-    : selectedVer?.download_url;
-
-  if (loading) {
-    return (
-      <Box sx={{ textAlign: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  }, [newFile, selectedVer])
+  
   if (error || !doc) {
     return <Alert severity="error">{error || 'Document not found'}</Alert>;
   }
 
   return (
-    <Container maxWidth="lg" sx={{ position: 'relative', py: 4 }}>
+    <Container maxWidth="lg" sx={{ height: "100vh", position: 'relative', py: 4 }}>
       <Backdrop
         open={busy}
         sx={{ zIndex: theme.zIndex.drawer + 1, color: '#fff' }}
@@ -223,9 +259,10 @@ export default function DocumentDetailsPage() {
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           gap: 4,
+          height: '80%'
         }}
       >
-        <Paper elevation={2} sx={{ flex: 1, p: 3 }}>
+        <Paper elevation={2} sx={{ height: "100%", flex: 1, p: 3 }}>
           <Typography variant="h4" gutterBottom>
             {doc.title}
           </Typography>
@@ -354,26 +391,16 @@ export default function DocumentDetailsPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: 400,
-          }}
+            height: "100%",
+                    }}
         >
-          {previewUrl ? (
-            /\.(png|jpe?g|gif)$/i.test(previewUrl) ? (
-              <Box
-                component="img"
-                src={previewUrl}
-                alt="Preview"
-                sx={{ maxWidth: '100%', maxHeight: '100%' }}
-              />
-            ) : (
-              <Box
+          {previewUrl ? <Box
                 component="iframe"
                 src={previewUrl}
                 title="Preview"
-                sx={{ width: '100%', height: 500, border: 'none' }}
+                sx={{ width: '100%', height: "100%", border: 'none' }}
               />
-            )
-          ) : (
+           : (
             <Typography>Select a version or file to preview</Typography>
           )}
         </Paper>
