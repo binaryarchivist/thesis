@@ -33,7 +33,7 @@ urlpatterns = [
         ),
     ),
     path(
-        "api/documents/versions/",
+        "api/documents/",
         include(
             (
                 "apps.documents.urls.documents_versions_details_urls",

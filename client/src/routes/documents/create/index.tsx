@@ -118,7 +118,7 @@ export default function DocumentCreatePage() {
         p: 4,
         boxSizing: 'border-box',
         overflow: 'auto',
-        justifySelf: "center"
+        justifySelf: 'center',
       }}
     >
       <Backdrop
@@ -155,7 +155,7 @@ export default function DocumentCreatePage() {
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           gap: 4,
-          height: '80%',   
+          height: '80%',
         }}
       >
         <Paper elevation={2} sx={{ flex: 1, p: 3 }}>
@@ -241,7 +241,7 @@ export default function DocumentCreatePage() {
                 component="iframe"
                 src={previewUrl}
                 title="Preview"
-                sx={{ width: '100%', height: "100%", border: 'none' }}
+                sx={{ width: '100%', height: '100%', border: 'none' }}
               />
             )}
           </Paper>

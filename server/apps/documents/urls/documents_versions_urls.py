@@ -6,7 +6,7 @@ app_name = "documents-versions-list"
 
 urlpatterns = [
     path(
-        "<uuid:document_id>/versions/",
+        "<uuid:document_id>/versions/list",
         DocumentVersionListAPIView.as_view(),
         name="doc-version-list",
     ),

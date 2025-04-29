@@ -57,7 +57,6 @@ export default class DocumentsApi {
     });
   }
 
-  /** Delete a document */
   static delete(id: string) {
     return client.delete(`/documents/${id}/`);
   }
@@ -72,6 +71,12 @@ export default class DocumentsApi {
     return client.put(`/documents/${document_id}/action/archive/`);
   }
   static esign(document_id: string) {
-    return client.put(`/documents/${document_id}/action/sign/`);
+    return client.put(`/documents/${document_id}/action/esign/`);
+  }
+
+  static createVersion(document_id: string, fd: FormData) {
+    return client.post<Document>(`/documents/${document_id}/versions/`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   }
 }

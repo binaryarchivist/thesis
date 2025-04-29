@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -21,13 +21,8 @@ import {
   Backdrop,
   Snackbar,
   useTheme,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import { PDFDocument } from 'pdf-lib';
 import DocumentsApi from 'api/DocumentsApi';
 import UsersApi from 'api/UseresApi';
 import { getAccessToken } from 'contexts/AuthContext';
@@ -58,33 +53,28 @@ export default function DocumentDetailsPage() {
   const navigate = useNavigate();
   const theme = useTheme();
 
-  // Document state
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Versions & preview
   const [selectedVer, setSelectedVer] = useState<Version | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [newFile, setNewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Users for reassignment
   const [users, setUsers] = useState<{ user_id: string; email: string }[]>([]);
   const [assignedTo, setAssignedTo] = useState<string>('');
 
-  // Busy / snackbar
   const [busy, setBusy] = useState(false);
   const [snack, setSnack] = useState<{
     open: boolean;
     msg: string;
     sev: 'success' | 'error';
-  }>({ open: false, msg: '', sev: 'success' });
+  }>({
+    open: false,
+    msg: '',
+    sev: 'success',
+  });
 
-  // E-Sign modal and signature file
-  const [signing, setSigning] = useState(false);
-  const [sigFile, setSigFile] = useState<File | null>(null);
-
-  // Load document + versions
   const loadDocument = useCallback(async (docId: string) => {
     setLoading(true);
     try {
@@ -99,22 +89,9 @@ export default function DocumentDetailsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (id) loadDocument(id);
-  }, [id, loadDocument]);
-
-  // Load users for future reassignment
-  useEffect(() => {
-    UsersApi.getUsers()
-      .then((r) => setUsers(r.data))
-      .catch(() => {
-        /* ignore */
-      });
-  }, []);
-
-  // Generic approve/reject/archive
+  /** Generic action (approve/reject/esign/archive) */
   const handleAction = useCallback(
-    async (action: 'approve' | 'reject' | 'archive' | 'esign') => {
+    async (action: 'approve' | 'reject' | 'esign' | 'archive') => {
       if (!id) return;
       setBusy(true);
       try {
@@ -130,24 +107,20 @@ export default function DocumentDetailsPage() {
     [id, loadDocument]
   );
 
-  // Handle version click
-  const handleSelectVersion = (v: Version) => {
-    setSelectedVer(v);
+  /** Handle version selection */
+  function handleSelectVersion(version: Version) {
+    setSelectedVer(version);
     setNewFile(null);
-  };
+  }
+
   /** Handle file‐input change */
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
     setNewFile(file);
-  };
+  }
 
-  // Handle assignee change (mock)
-  const handleAssign = (e: SelectChangeEvent) => {
-    setAssignedTo(e.target.value);
-    setSnack({ open: true, msg: 'Assignee updated (mock)', sev: 'success' });
-  };
-
-  const handleUpload = async () => {
+  /** Upload a new version */
+  async function handleUpload() {
     if (!id || !newFile) {
       return;
     }
@@ -169,7 +142,40 @@ export default function DocumentDetailsPage() {
     } finally {
       setBusy(false);
     }
-  };
+  }
+
+  function handleAssign(e: SelectChangeEvent) {
+    setAssignedTo(e.target.value);
+    setSnack({ open: true, msg: 'Assignee updated (mock)', sev: 'success' });
+  }
+
+  function handleBack() {
+    navigate(-1);
+  }
+
+  function handleCloseSnack() {
+    setSnack((s) => ({ ...s, open: false }));
+  }
+
+  useEffect(() => {
+    if (!id) {
+      return;
+    }
+    loadDocument(id);
+  }, [id, loadDocument]);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const { data } = await UsersApi.getUsers();
+      setUsers(data);
+    } catch {
+      console.error('Failed to load users');
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   useEffect(() => {
     // clean up any old blob‐URLs
@@ -215,76 +221,6 @@ export default function DocumentDetailsPage() {
     };
   }, [newFile, selectedVer]);
 
-  // E-Sign: fetch PDF, embed signature image, upload new version
-  const handleApplySignature = async () => {
-    if (!id || !selectedVer || !sigFile) return;
-    setBusy(true);
-    try {
-      // 1) Fetch original PDF
-      const res = await fetch(selectedVer.download_url, {
-        headers: { Authorization: `Bearer ${getAccessToken()}` },
-      });
-      if (!res.ok) throw new Error('Failed to download PDF');
-      const pdfBytes = await res.arrayBuffer();
-
-      // 2) Read signature file bytes
-      const sigBytes = await sigFile.arrayBuffer();
-
-      // 3) Stamp onto PDF
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-      const image =
-        sigFile.type === 'image/png'
-          ? await pdfDoc.embedPng(sigBytes)
-          : await pdfDoc.embedJpg(sigBytes);
-      const page = pdfDoc.getPages()[0];
-      const { width, height } = page.getSize();
-      const scale = 0.25;
-      const dims = image.scale(scale);
-      page.drawImage(image, {
-        x: width - dims.width - 50,
-        y: 50,
-        width: dims.width,
-        height: dims.height,
-      });
-      const signedPdfBytes = await pdfDoc.save();
-      console.log('signedPdfBytes: ', signedPdfBytes);
-
-      // 4) Upload signed PDF as new version
-      const blob = new Blob([signedPdfBytes], { type: 'application/pdf' });
-      const file = new File([blob], `signed-${doc!.title}.pdf`, {
-        type: 'application/pdf',
-      });
-      const form = new FormData();
-      form.append('file', file);
-      await DocumentsApi.createVersion(id, form);
-      await handleAction('esign');
-      // 5) Refresh and notify
-      await loadDocument(id);
-      setSnack({ open: true, msg: 'Document e-signed!', sev: 'success' });
-      setSigning(false);
-      setSigFile(null);
-    } catch (e: any) {
-      setSnack({
-        open: true,
-        msg: e.message || 'Signing failed',
-        sev: 'error',
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // Navigation & snackbar handlers
-  const handleBack = () => navigate(-1);
-  const handleCloseSnack = () => setSnack((s) => ({ ...s, open: false }));
-
-  if (loading) {
-    return (
-      <Box sx={{ textAlign: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
   if (error || !doc) {
     return <Alert severity="error">{error || 'Document not found'}</Alert>;
   }
@@ -294,7 +230,6 @@ export default function DocumentDetailsPage() {
       maxWidth="lg"
       sx={{ height: '100vh', position: 'relative', py: 4 }}
     >
-      {/* Busy backdrop */}
       <Backdrop
         open={busy}
         sx={{ zIndex: theme.zIndex.drawer + 1, color: '#fff' }}
@@ -302,7 +237,6 @@ export default function DocumentDetailsPage() {
         <CircularProgress color="inherit" />
       </Backdrop>
 
-      {/* Snackbar */}
       <Snackbar
         open={snack.open}
         autoHideDuration={3000}
@@ -318,7 +252,6 @@ export default function DocumentDetailsPage() {
         &larr; Back
       </Button>
 
-      {/* Main split layout */}
       <Box
         component={motion.div}
         initial={{ opacity: 0, y: 20 }}
@@ -331,8 +264,7 @@ export default function DocumentDetailsPage() {
           height: '80%',
         }}
       >
-        {/* Left panel: metadata & actions */}
-        <Paper elevation={2} sx={{ flex: 1, p: 3, overflow: 'auto' }}>
+        <Paper elevation={2} sx={{ height: '100%', flex: 1, p: 3 }}>
           <Typography variant="h4" gutterBottom>
             {doc.title}
           </Typography>
@@ -385,7 +317,7 @@ export default function DocumentDetailsPage() {
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => setSigning(true)}
+                onClick={() => handleAction('esign')}
               >
                 E-Sign
               </Button>
@@ -396,6 +328,15 @@ export default function DocumentDetailsPage() {
                 onClick={() => handleAction('archive')}
               >
                 Archive
+              </Button>
+            )}
+            {doc.allowed_actions.includes('resubmit') && (
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={() => setNewFile(null)}
+              >
+                Resubmit
               </Button>
             )}
           </Box>
@@ -409,9 +350,7 @@ export default function DocumentDetailsPage() {
                 <ListItem disablePadding>
                   <ListItemButton onClick={() => handleSelectVersion(v)}>
                     <ListItemText
-                      primary={`v${v.version_number} • ${new Date(
-                        v.created_at
-                      ).toLocaleString()}`}
+                      primary={`v${v.version_number} • ${new Date(v.created_at).toLocaleString()}`}
                       secondary={v.file_name}
                     />
                   </ListItemButton>
@@ -420,6 +359,7 @@ export default function DocumentDetailsPage() {
               </React.Fragment>
             ))}
           </List>
+
           {doc.allowed_actions.includes('resubmit') && (
             <Box sx={{ mt: 3 }}>
               <Typography variant="h6">Upload New Version</Typography>
@@ -441,7 +381,6 @@ export default function DocumentDetailsPage() {
           )}
         </Paper>
 
-        {/* Right panel: preview */}
         <Paper
           elevation={2}
           component={motion.div}
@@ -465,37 +404,10 @@ export default function DocumentDetailsPage() {
               sx={{ width: '100%', height: '100%', border: 'none' }}
             />
           ) : (
-            <Typography>Select a version to preview</Typography>
+            <Typography>Select a version or file to preview</Typography>
           )}
         </Paper>
       </Box>
-
-      {/* E-Sign dialog */}
-      <Dialog
-        open={signing}
-        onClose={() => setSigning(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Upload Signature Image</DialogTitle>
-        <DialogContent>
-          <Button variant="outlined" component="label">
-            {sigFile ? sigFile.name : 'Select PNG/JPG Signature'}
-            <input
-              type="file"
-              accept="image/png, image/jpeg"
-              hidden
-              onChange={(e) => setSigFile(e.target.files?.[0] ?? null)}
-            />
-          </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSigning(false)}>Cancel</Button>
-          <Button onClick={handleApplySignature} disabled={!sigFile}>
-            Apply to PDF
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 }
