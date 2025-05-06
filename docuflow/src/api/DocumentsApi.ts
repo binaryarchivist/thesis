@@ -25,20 +25,9 @@ export default class DocumentsApi {
 
   /** Create a new document + initial version */
   static create(
-    title: string,
-    file: File,
-    assignee_id: string,
-    description?: string
+    formData: FormData
   ) {
-    const fd = new FormData();
-    fd.append('title', title);
-    if (description) {
-      fd.append('description', description);
-    }
-    fd.append('file', file);
-    fd.append('assignee_id', assignee_id);
-
-    return client.post<Document>('/documents/', fd, {
+    return client.post<Document>('/documents/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   }

@@ -1,45 +1,37 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronDown,
   CheckCircle,
   PenTool,
   Archive as ArchiveIcon,
-  Loader2,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import DocumentDetails from '../../components/documents/DocumentDetails';
+import DocumentDetails from '../../../components/documents/DocumentDetails';
+import { useAuthContext } from '@/contexts/AuthContext';
+import DocumentsApi from '@/api/DocumentsApi';
 
 export default function DocumentDetail() {
+  const { userData }= useAuthContext();
   const navigate = useNavigate();
-  const urlParams = new URLSearchParams(window.location.search);
-  const documentId = urlParams.get('id');
+  const { id } = useParams();
 
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
   const [processing, setProcessing] = useState(false);
-
+  
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Get user data
-        // const user = await User.me(); // GET USER API todo
-        const user = {
-          full_name: 'John Doe',
-          role: 'Admin',
-        };
-        setUserData(user);
-
         // Get document by ID
-        if (documentId) {
-          const documents = await Document.list();
-          const doc = documents.find((d) => d.document_id === documentId);
-          if (doc) {
-            setDocument(doc);
+        if (id) {
+          const { data } = await DocumentsApi.get(id);
+          if (data) {
+            setDocument(data);
           }
         }
       } catch (error) {
@@ -48,22 +40,22 @@ export default function DocumentDetail() {
         setLoading(false);
       }
     };
-
+    
     fetchData();
-  }, [documentId]);
-
+  }, [id]);
+  
   const handleArchiveDocument = async () => {
     setProcessing(true);
     try {
-      await Document.update(document.document_id, {
-        ...document,
-        status: 'archived',
-        archive_date: new Date().toISOString(),
-      });
-
+    //   await Document.update(document.id, {
+    //     ...document,
+    //     status: 'archived',
+    //     archive_date: new Date().toISOString()
+    //   });
+      
       // Refresh document
-      const { data } = await Document.list(); 
-      const updatedDoc = data.find((d) => d.document_id === documentId);
+      const documents = await DocumentsApi.list();
+      const updatedDoc = documents.find(d => d.document_id === documentId);
       if (updatedDoc) {
         setDocument(updatedDoc);
       }
@@ -73,19 +65,19 @@ export default function DocumentDetail() {
       setProcessing(false);
     }
   };
-
+  
   const handleBackToDashboard = () => {
     navigate("/");
   };
-
+  
   const handleGoToReview = () => {
+    navigate("/review");
+  };
+  
+  const handleGoToSign = () => {
     navigate("/pending");
   };
-
-  const handleGoToSign = () => {
-    navigate("/approved");
-  };
-
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -93,22 +85,22 @@ export default function DocumentDetail() {
       </div>
     );
   }
-
+  
   if (!document) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Document Not Found
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Document Not Found</h1>
           <p className="text-muted-foreground mt-1">
-            The document you're looking for doesn't exist or you don't have
-            permission to view it.
+            The document you're looking for doesn't exist or you don't have permission to view it.
           </p>
         </div>
-
-        <Button onClick={handleBackToDashboard} className="gap-1">
-          <ChevronDown className="h-4 w-4 rotate-90" />
+        
+        <Button 
+          onClick={handleBackToDashboard}
+          className="gap-1"
+        >
+          <ChevronDown className="h-4 w-4 rotate-90" /> 
           Back to Dashboard
         </Button>
       </div>
@@ -123,45 +115,43 @@ export default function DocumentDetail() {
           View details for this document
         </p>
       </div>
-
+      
       <Card>
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
-            <Button
-              variant="outline"
+            <Button 
+              variant="outline" 
               size="sm"
               onClick={handleBackToDashboard}
               className="gap-1"
             >
-              <ChevronDown className="h-4 w-4 rotate-90" />
+              <ChevronDown className="h-4 w-4 rotate-90" /> 
               Back to Dashboard
             </Button>
-
+            
             <div className="flex gap-2">
-              {document.status === 'pending' &&
-                document.reviewer_id === userData?.user_id && (
-                  <Button
-                    onClick={handleGoToReview}
-                    className="bg-amber-600 hover:bg-amber-700 gap-1"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Review
-                  </Button>
-                )}
-
-              {document.status === 'approved' &&
-                document.assignee_id === userData?.user_id && (
-                  <Button
-                    onClick={handleGoToSign}
-                    className="bg-blue-600 hover:bg-blue-700 gap-1"
-                  >
-                    <PenTool className="h-4 w-4" />
-                    Sign
-                  </Button>
-                )}
-
+              {document.status === 'pending' && document.reviewer_id === userData?.user_id && (
+                <Button 
+                  onClick={handleGoToReview}
+                  className="bg-amber-600 hover:bg-amber-700 gap-1"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Review
+                </Button>
+              )}
+              
+              {document.status === 'approved' && document.assignee_id === userData?.user_id && (
+                <Button 
+                  onClick={handleGoToSign}
+                  className="bg-blue-600 hover:bg-blue-700 gap-1"
+                >
+                  <PenTool className="h-4 w-4" />
+                  Sign
+                </Button>
+              )}
+              
               {document.status === 'signed' && (
-                <Button
+                <Button 
                   variant="outline"
                   onClick={handleArchiveDocument}
                   disabled={processing}
@@ -178,9 +168,9 @@ export default function DocumentDetail() {
             </div>
           </div>
         </CardHeader>
-
+        
         <Separator />
-
+        
         <CardContent className="pt-6">
           <DocumentDetails document={document} />
         </CardContent>

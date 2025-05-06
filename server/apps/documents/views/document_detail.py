@@ -43,8 +43,14 @@ class DocumentDetailAPIView(APIView):
         )
         data["created_by"] = doc.created_by.email
         data["created_at"] = doc.created_at.isoformat()
-        data["assigned_to"] = doc.assigned_to.email
         data["status"] = doc.status
+        data["tags"] = doc.tags
+        data["priority"] = doc.priority
+        data["reviewer"] = doc.reviewer.email
+        data["assignee"] = doc.assigned_to.email
+        data["assignee_id"] = doc.assigned_to.user_id
+        data["reviewer_id"] = doc.reviewer.user_id
+        data["document_type"] = doc.document_type if doc.document_type else None
 
         data["versions"] = []
         for v in doc.versions.order_by("version_number"):

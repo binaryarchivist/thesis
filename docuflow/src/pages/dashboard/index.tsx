@@ -15,11 +15,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import StatusCard from '../../components/dashboard/StatusCard';
 import RecentDocumentsList from '../../components/dashboard/RecentDocumentsList';
 import DocumentStatusChart from '../../components/dashboard/DocumentStatusChart';
+import { useAuthContext } from '@/contexts/AuthContext';
+import DocumentsApi from '@/api/DocumentsApi';
 
 export default function Dashboard() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
+  const { userData } = useAuthContext()
   const [statusCounts, setStatusCounts] = useState({
     pending: 0,
     approved: 0,
@@ -32,13 +34,8 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // const user = await User.me(); GET USER API TODO
-        const user = {};
-        setUserData(user);
-
-        // const allDocuments = await Document.list('-created_date'); GET DOCUMENTS API TODO
-        const allDocuments = [];
-        setDocuments(allDocuments);
+        const { data } = await DocumentsApi.list();
+        setDocuments(data);
 
         // Count documents by status
         const counts = {
@@ -49,7 +46,7 @@ export default function Dashboard() {
           archived: 0,
         };
 
-        allDocuments.forEach((doc) => {
+        data.forEach((doc) => {
           if (counts[doc.status] !== undefined) {
             counts[doc.status]++;
           }
@@ -68,13 +65,13 @@ export default function Dashboard() {
 
   const getPendingReviews = () => {
     return documents.filter(
-      (doc) => doc.status === 'pending' && doc.reviewer_id === userData?.id
+      (doc) => doc.status === 'pending' && doc.reviewer_id === userData?.user_id
     ).length;
   };
 
   const getPendingSigns = () => {
     return documents.filter(
-      (doc) => doc.status === 'approved' && doc.assignee_id === userData?.id
+      (doc) => doc.status === 'approved' && doc.assignee_id === userData?.user_id
     ).length;
   };
 

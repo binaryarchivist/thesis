@@ -25,11 +25,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import DocumentsList from '../../../components/documents/DocumentsList';
 import DocumentDetails from '../../../components/documents/DocumentDetails';
 import ReviewForm from '../../../components/documents/ReviewForm';
+import DocumentsApi from '@/api/DocumentsApi';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export default function Review() {
+  const { userData } = useAuthContext();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedDocument, setSelectedDocument] = useState(null);
@@ -40,17 +42,8 @@ export default function Review() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // const user = await User.me(); GET INFORMATION ABOT USER TODO
-        const user = {
-          full_name: 'John Doe',
-          role: 'Reviewer',
-          id: '12345',
-        };
-        setUserData(user);
-
-        // const allDocuments = await Document.list('-created_date'); GET DOCUMENT LIST API TODO
-        const allDocuments = [];
-        setDocuments(allDocuments);
+        const {data} = await DocumentsApi.list(); 
+        setDocuments(data);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -70,9 +63,8 @@ export default function Review() {
       //   }); UPDATE DOCUMENT API TODO
 
       // Refresh documents
-      //   const updatedDocuments = await Document.list('-created_date'); // GET DOCUMENT LIST API TODO
-      const updatedDocuments = [];
-      setDocuments(updatedDocuments);
+        const {data} = await DocumentsApi.list(); // GET DOCUMENT LIST API TODO
+      setDocuments(data);
 
       // Reset UI state
       setShowReviewForm(false);
@@ -104,7 +96,7 @@ export default function Review() {
     let filtered = documents.filter(
       (doc) =>
         (doc.status === 'approved' || doc.status === 'rejected') &&
-        doc.reviewer_id === userData?.id
+        doc.reviewer_id === userData?.user_id
     );
 
     if (searchQuery) {

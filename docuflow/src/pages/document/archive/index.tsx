@@ -70,16 +70,15 @@ export default function Archive() {
     //   }); todo document archive api
       
       // Refresh documents
-    //   const updatedDocuments = await Document.list('-created_date'); // Fetch all documents TODO
-        const updatedDocuments = []
-      const updatedSignedDocs = updatedDocuments.filter(doc => 
+      const { data } = await Document.list(); // Fetch all documents TODO
+      const updatedSignedDocs = data.filter(doc => 
         doc.status === 'signed' || doc.status === 'archived'
       );
       setDocuments(updatedSignedDocs);
       
       // If we archived the currently selected document, update it
-      if (selectedDocument && selectedDocument.id === document.id) {
-        const updatedDoc = updatedSignedDocs.find(doc => doc.id === document.id);
+      if (selectedDocument && selectedDocument.document_id === document.document_id) {
+        const updatedDoc = updatedSignedDocs.find(doc => doc.document_id === document.document_id);
         if (updatedDoc) {
           setSelectedDocument(updatedDoc);
         }
@@ -204,7 +203,7 @@ export default function Archive() {
                   <div className="space-y-4">
                     {getFilteredDocuments().map((doc) => (
                       <div 
-                        key={doc.id}
+                        key={doc.document_id}
                         className="flex items-start justify-between gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         <div 

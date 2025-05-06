@@ -24,6 +24,8 @@ import {
 } from '@/components/ui/select';
 import UserSelectDropdown from '../../../components/documents/UserSelectDropdown';
 import TagInput from '../../../components/documents/TagInput';
+import DocumentsApi from '@/api/DocumentsApi';
+import UsersApi from '@/api/UseresApi';
 
 export default function CreateDocument() {
   const navigate = useNavigate();
@@ -37,7 +39,7 @@ export default function CreateDocument() {
     title: '',
     description: '',
     content: '',
-    file_url: '',
+    file: '',
     document_type: 'contract',
     reviewer_id: '',
     reviewer_name: '',
@@ -51,14 +53,8 @@ export default function CreateDocument() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // const usersList = await User.list(); FETCH USERS API TODO
-        const usersList = [
-            { id: '1', name: 'John Doe' },
-            { id: '2', name: 'Jane Smith' },
-            { id: '3', name: 'Alice Johnson' },
-            { id: '4', name: 'Bob Brown' },
-        ]; // Mock data
-        setUsers(usersList);
+        const usersListResponse = await UsersApi.getUsers();
+        setUsers(usersListResponse.data);
       } catch (error) {
         console.error('Error fetching users:', error);
       }
@@ -107,8 +103,8 @@ export default function CreateDocument() {
     setFileUploading(true);
     try {
       //   const { file_url } = await UploadFile({ file });  // TODO UPLOAD FILE API
-      const file_url = URL.createObjectURL(file); // Mock upload
-      setFormData((prev) => ({ ...prev, file_url }));
+      const file_url = URL.createObjectURL(file); // Mock upload TODO
+      setFormData((prev) => ({ ...prev, file }));
     } catch (err) {
       setError('Error uploading file. Please try again.');
       console.error('File upload error:', err);
@@ -133,8 +129,8 @@ export default function CreateDocument() {
       return false;
     }
 
-    if (!formData.content && !formData.file_url) {
-      setError('Please provide document content or upload a file');
+    if (!formData.file) {
+      setError('Please upload a file');
       return false;
     }
 
@@ -150,6 +146,12 @@ export default function CreateDocument() {
     setError(null);
 
     try {
+      const fd = new FormData();
+      Object.keys(formData).forEach((key) => {
+        fd.append(key, formData[key]);
+      })
+
+      await DocumentsApi.create(fd);
       //   await Document.create(formData); CREATE New document API TODO
       setSuccess(true);
 

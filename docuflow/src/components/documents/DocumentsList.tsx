@@ -127,7 +127,7 @@ export default function DocumentsList({ documents = [], onOpenDocument }) {
     <div className="space-y-4">
       {documents.map((doc) => (
         <div
-          key={doc.id}
+          key={doc.document_id}
           onClick={() => onOpenDocument(doc)}
           className="flex items-start gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
         >
@@ -142,7 +142,7 @@ export default function DocumentsList({ documents = [], onOpenDocument }) {
             </div>
 
             <p className="text-sm text-gray-500 mt-1">
-              Created on {format(new Date(doc.created_date), 'MMM d, yyyy')}
+              Created on {format(new Date(doc.created_at), 'MMM d, yyyy')}
             </p>
 
             <div className="flex flex-wrap gap-2 mt-2">

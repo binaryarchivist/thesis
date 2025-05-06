@@ -115,11 +115,16 @@ class DocumentListAPIView(APIView):
     )
     def post(self, request):
         payload = request.data
+        print("payload: ", payload)
         title = payload.get("title")
         description = payload.get("description", "")
         assignee_id = payload.get("assignee_id")
+        reviewer_id = payload.get("reviewer_id")
+        tags = payload.get("tags")
+        priority = payload.get("priority")
+        document_type = payload.get("document_type")
         upload = request.FILES.get("file")
-
+        
         if not upload:
             return Response(
                 {"error": "File is required."}, status=status.HTTP_400_BAD_REQUEST
@@ -133,7 +138,14 @@ class DocumentListAPIView(APIView):
         if not assignee_id:
             return Response(
                 {"error": "Assignee is required."}, status=status.HTTP_400_BAD_REQUEST
+            )       
+        if not reviewer_id:
+            return Response(
+                {"error": "Reviewer is required."}, status=status.HTTP_400_BAD_REQUEST
             )
+            
+        if tags:
+            tags = tags.split(",")
 
         assignee_user = User.objects.filter(user_id=assignee_id).first()
         if assignee_user is None:
@@ -148,6 +160,7 @@ class DocumentListAPIView(APIView):
             )
 
         assignee_user = User.objects.get(user_id=assignee_id)
+        reviewer_user = User.objects.get(user_id=reviewer_id)
 
         # Create the Document
         doc = Document.objects.create(
@@ -155,6 +168,10 @@ class DocumentListAPIView(APIView):
             description=description,
             created_by=request_user,
             assigned_to=assignee_user,
+            rewiewer=reviewer_user,
+            tags=tags,
+            priority=priority,
+            document_type=document_type,
             status=Document.STATUS_PENDING,
         )
         # Create the first version

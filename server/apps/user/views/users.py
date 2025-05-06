@@ -28,6 +28,8 @@ class UserViewSet(APIView):
                 {
                     "user_id": user.user_id,
                     "email": user.email,
+                    "name": user.name,
+                    "surname": user.surname,
                 }
             )
         return Response(data)

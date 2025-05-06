@@ -34,7 +34,7 @@ export default function UserSelectDropdown({
       .substring(0, 2);
   };
 
-  const selectedUser = users.find((user) => user.id === selectedUserId);
+  const selectedUser = users.find((user) => user.user_id === selectedUserId);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -49,10 +49,10 @@ export default function UserSelectDropdown({
             <div className="flex items-center gap-2">
               <Avatar className="h-6 w-6 text-sm">
                 <AvatarFallback className="bg-teal-100 text-teal-700">
-                  {getInitials(selectedUser.full_name)}
+                  {getInitials(selectedUser.name + ' ' + selectedUser.surname)}
                 </AvatarFallback>
               </Avatar>
-              <span>{selectedUser.full_name}</span>
+              <span>{selectedUser.name + ' ' + selectedUser.surname}</span>
             </div>
           ) : (
             <span className="text-gray-500">{placeholder}</span>
@@ -67,25 +67,25 @@ export default function UserSelectDropdown({
           <CommandGroup className="max-h-64 overflow-y-auto">
             {users.map((user) => (
               <CommandItem
-                key={user.id}
-                value={user.id}
+                key={user.user_id}
+                value={user.user_id}
                 onSelect={() => {
-                  onChange(user.id, user.full_name);
+                  onChange(user.user_id, user.name + ' ' + user.surname);
                   setOpen(false);
                 }}
               >
                 <div className="flex items-center gap-2">
                   <Avatar className="h-6 w-6 text-sm">
                     <AvatarFallback className="bg-teal-100 text-teal-700">
-                      {getInitials(user.full_name)}
+                      {getInitials(user.name + ' ' + user.surname)}
                     </AvatarFallback>
                   </Avatar>
-                  <span>{user.full_name}</span>
+                  <span>{user.name + ' ' + user.surname}</span>
                 </div>
                 <Check
                   className={cn(
                     'ml-auto h-4 w-4',
-                    selectedUserId === user.id ? 'opacity-100' : 'opacity-0'
+                    selectedUserId === user.user_id ? 'opacity-100' : 'opacity-0'
                   )}
                 />
               </CommandItem>

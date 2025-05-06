@@ -16,29 +16,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userData, setUserData] = useState(null);
+  const { userData, logout } = useAuthContext();
+  console.log("userData: ", userData)
   const location = useLocation();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        // const user = await User.me(); // GET USER API todo
-        const user = {
-          full_name: 'John Doe',
-          role: 'Admin',
-        };
-        setUserData(user);
-      } catch (error) {
-        console.error('Error fetching user:', error);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  const getInitials = (name) => {
+  const getInitials = () => {
+    const name = userData?.name + ' ' + userData?.surname;
     if (!name) return 'U';
     return name
       .split(' ')
@@ -46,13 +33,6 @@ export default function Layout({ children, currentPageName }) {
       .join('')
       .toUpperCase()
       .substring(0, 2);
-  };
-
-  const handleLogout = async () => {
-    // await User.logout(); TODO LOGOUT API
-    // Clear user data and token
-    setUserData(null);
-    window.location.reload();
   };
 
   const menuItems = [
@@ -162,18 +142,18 @@ export default function Layout({ children, currentPageName }) {
                 <div className="flex items-center">
                   <Avatar className="h-8 w-8 mr-2 bg-teal-100 text-teal-700">
                     <AvatarFallback>
-                      {getInitials(userData.full_name)}
+                      {getInitials()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium">{userData.full_name}</p>
-                    <p className="text-xs text-gray-500">{userData.role}</p>
+                    <p className="text-sm font-medium">{userData.name + ' ' + userData?.surname}</p>
+                    <p className="text-xs text-gray-500">{userData.role || 'Admin'}</p>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleLogout}
+                  onClick={logout}
                   className="text-gray-500 hover:text-red-500"
                 >
                   <LogOut className="h-4 w-4" />
@@ -211,7 +191,7 @@ export default function Layout({ children, currentPageName }) {
             {userData && (
               <Avatar className="h-8 w-8 bg-teal-100 text-teal-700">
                 <AvatarFallback>
-                  {getInitials(userData.full_name)}
+                  {getInitials()}
                 </AvatarFallback>
               </Avatar>
             )}

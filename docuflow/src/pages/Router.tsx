@@ -1,11 +1,25 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './dashboard';
 import Layout from '@/components/layout';
 import CreateDocument from './document/create';
 import Archive from './document/archive';
 import Sign from './document/sign';
 import Review from './document/review';
+import { useAuthContext } from '@/contexts/AuthContext';
+import Login from './login';
+import DocumentDetail from './document/detail';
 
+function Protected({ children, currentPageName }){
+    const authContext = useAuthContext();
+  
+    if (authContext?.accessToken) {
+      return <Layout currentPageName={currentPageName}>{children}</Layout>;
+    }
+  
+    return <Navigate to="/login" replace />;
+  }
+
+  
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -13,25 +27,25 @@ export default function AppRoutes() {
         <Route
           path="/"
           element={
-            <Layout currentPageName={'Dashboard'}>
+            <Protected currentPageName={'Dashboard'}>
               <Dashboard />
-            </Layout>
+            </Protected>
           }
         />
          <Route
           path="/create"
           element={
-            <Layout currentPageName={'Create Document'}>
+            <Protected currentPageName={'Create Document'}>
               <CreateDocument />
-            </Layout>
+            </Protected>
           }
         />
           <Route
           path="/archived"
           element={
-            <Layout currentPageName={'Archived Documents'}>
+            <Protected currentPageName={'Archived Documents'}>
               <Archive />
-            </Layout>
+            </Protected>
           }
         />
           <Route
@@ -45,11 +59,25 @@ export default function AppRoutes() {
           <Route
           path="/pending"
           element={
-            <Layout currentPageName={'Pending Documents'}>
+            <Protected currentPageName={'Pending Documents'}>
               <Review />
-            </Layout>
+            </Protected>
           }
         />
+           <Route
+          path="/documents/:id"
+          element={
+            <Protected currentPageName={'Document Detail'}>
+              <DocumentDetail />
+            </Protected>
+          }
+        />
+            <Route
+                 path="/login"
+                 element={
+                   <Login/>
+                 }
+          />
       </Routes>
     </BrowserRouter>
   );

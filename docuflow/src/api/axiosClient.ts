@@ -6,8 +6,8 @@ import {
 } from '../contexts/AuthContext';
 import AuthApi from './AuthApi';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || '/api';
-
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+console.log("BASE_URL: ", BASE_URL)
 const client = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },

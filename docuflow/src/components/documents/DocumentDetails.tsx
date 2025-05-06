@@ -118,7 +118,7 @@ export default function DocumentDetails({ document }) {
         <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-500">
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
-            {format(new Date(document.created_date), 'PPP')}
+            {format(new Date(document.created_at), 'PPP')}
           </div>
 
           {document.tags &&
@@ -159,7 +159,7 @@ export default function DocumentDetails({ document }) {
                   Document Type
                 </dt>
                 <dd className="mt-1 capitalize">
-                  {document.document_type?.replace('_', ' ') || (
+                  {document.document_type || (
                     <span className="text-gray-400">Not specified</span>
                   )}
                 </dd>
@@ -210,7 +210,7 @@ export default function DocumentDetails({ document }) {
                 <dt className="text-sm font-medium text-gray-500">Reviewer</dt>
                 <dd className="mt-1 flex items-center">
                   <User className="h-4 w-4 mr-1 text-gray-400" />
-                  {document.reviewer_name || (
+                  {document.reviewer || (
                     <span className="text-gray-400">Not assigned</span>
                   )}
                 </dd>
@@ -220,7 +220,7 @@ export default function DocumentDetails({ document }) {
                 <dt className="text-sm font-medium text-gray-500">Assignee</dt>
                 <dd className="mt-1 flex items-center">
                   <User className="h-4 w-4 mr-1 text-gray-400" />
-                  {document.assignee_name || (
+                  {document.assignee || (
                     <span className="text-gray-400">Not assigned</span>
                   )}
                 </dd>

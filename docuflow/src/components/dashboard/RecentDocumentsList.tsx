@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -53,8 +52,8 @@ export default function RecentDocumentsList({ documents }) {
 
         return (
           <Link
-            key={doc.id}
-            to={`/documents/${doc.id}`}
+            key={doc.document_id}
+            to={`/documents/${doc.document_id}`}
             className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-3">
@@ -71,7 +70,7 @@ export default function RecentDocumentsList({ documents }) {
                     {statusDetails.label}
                   </Badge>
                   <span className="text-xs text-gray-500">
-                    {format(new Date(doc.created_date), 'MMM d, yyyy')}
+                    {format(new Date(doc.created_at), 'MMM d, yyyy')}
                   </span>
                 </div>
               </div>

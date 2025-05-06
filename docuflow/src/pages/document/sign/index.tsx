@@ -33,11 +33,13 @@ import { Textarea } from '@/components/ui/textarea';
 import DocumentsList from '../../../components/documents/DocumentsList';
 import DocumentDetails from '../../../components/documents/DocumentDetails';
 import SignatureCanvas from '../../../components/documents/SignatureCanvas';
+import DocumentsApi from '@/api/DocumentsApi';
 
 export default function Sign() {
+  const { userData } = useAuthContext();
+
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedDocument, setSelectedDocument] = useState(null);
@@ -46,30 +48,6 @@ export default function Sign() {
   const [signingInProgress, setSigningInProgress] = useState(false);
   const [signatureData, setSignatureData] = useState('');
   const [signatureNotes, setSignatureNotes] = useState('');
-  
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // const user = await User.me(); // GET USER API todo
-        const user = {
-          full_name: 'John Doe',
-          role: 'Admin'
-        };
-        setUserData(user);
-        
-        // const allDocuments = await Document.list('-created_date'); GET DOCUMENTS API todo
-        const allDocuments = []
-        setDocuments(allDocuments);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
   
   const handleSignDocument = async () => {
     if (!signatureData) {
@@ -89,9 +67,8 @@ export default function Sign() {
     //   }); // TODO SIGN DOCUMENT API  
       
       // Refresh documents
-    //   const updatedDocuments = await Document.list('-created_date'); // GET DOCUMENTS API todo
-        const updatedDocuments = []
-      setDocuments(updatedDocuments);
+      const {data} = await DocumentsApi.list();
+      setDocuments(data);
       
       // Reset UI state
       setShowSignForm(false);
@@ -108,7 +85,7 @@ export default function Sign() {
   const getPendingDocuments = () => {
     let filtered = documents.filter(doc => 
       doc.status === 'approved' && 
-      doc.assignee_id === userData?.id
+      doc.assignee_id === userData?.user_id
     );
     
     if (searchQuery) {
@@ -127,7 +104,7 @@ export default function Sign() {
   const getSignedDocuments = () => {
     let filtered = documents.filter(doc => 
       doc.status === 'signed' && 
-      doc.assignee_id === userData?.id
+      doc.assignee_id === userData?.user_id
     );
     
     if (searchQuery) {

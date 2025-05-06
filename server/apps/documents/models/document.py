@@ -3,6 +3,7 @@ import uuid
 from apps.core.models.base import BaseModel
 from apps.user.models.user import User
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 
 
 class Document(BaseModel):
@@ -28,6 +29,16 @@ class Document(BaseModel):
         (STATUS_SIGNED, "SIGNED"),
         (STATUS_ARCHIVED, "ARCHIVED"),
     )
+    
+    PRIORITY_LOW = "low"
+    PRIORITY_MEDIUM = "medium"
+    PRIORITY_HIGH = "high"
+    
+    document_priority_choices = (
+        (PRIORITY_LOW, "Low"),
+        (PRIORITY_MEDIUM, "Medium"),
+        (PRIORITY_HIGH, "High"),
+    )  
 
     status = models.CharField(
         choices=document_status_choices, default=STATUS_PENDING, max_length=20
@@ -35,7 +46,13 @@ class Document(BaseModel):
     assigned_to = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="assigned_to"
     )
-
+    reviewer = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="rewiewer"
+    )
+    priority = models.CharField(choices=document_priority_choices, max_length=20)
+    tags = ArrayField(models.CharField(max_length=50), blank=True, null=True)
+    document_type = models.CharField(max_length=50, blank=True, null=True)
+    
     class Meta:
         db_table = "documents"
 
