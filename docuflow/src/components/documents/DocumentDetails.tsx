@@ -13,8 +13,10 @@ import {
   AlertCircle,
   ExternalLink,
 } from 'lucide-react';
+import { useState } from 'react';
 
 export default function DocumentDetails({ document }) {
+    
   if (!document) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -220,7 +222,7 @@ export default function DocumentDetails({ document }) {
                 <dt className="text-sm font-medium text-gray-500">Assignee</dt>
                 <dd className="mt-1 flex items-center">
                   <User className="h-4 w-4 mr-1 text-gray-400" />
-                  {document.assignee || (
+                  {document.assigned_to || (
                     <span className="text-gray-400">Not assigned</span>
                   )}
                 </dd>
@@ -241,7 +243,7 @@ export default function DocumentDetails({ document }) {
           </CardContent>
         </Card>
       </div>
-
+{/* 
       {document.content && (
         <Card>
           <CardHeader className="pb-2">
@@ -256,7 +258,7 @@ export default function DocumentDetails({ document }) {
             />
           </CardContent>
         </Card>
-      )}
+      )} */}
 
       {document.review_notes && (
         <Card>

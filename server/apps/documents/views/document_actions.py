@@ -21,10 +21,13 @@ class DocumentActionsAPIView(APIView):
         """
         Update a document with an action.
         """
+        data = request.data
+        review_notes = data.get("review_notes", None)
+        review_date = data.get("review_date", None)
         if action == "reject":
-            self.reject_document(document_id)
+            self.reject_document(document_id, review_notes, review_date)
         if action == "approve":
-            self.approve_document(document_id)
+            self.approve_document(document_id, review_notes, review_date)
         if action == "esign":
             self.esign_document(document_id)
         if action == "archive":
@@ -32,11 +35,13 @@ class DocumentActionsAPIView(APIView):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def reject_document(self, document_id):
+    def reject_document(self, document_id, review_notes, review_date):
         try:
             doc = Document.objects.get(document_id=document_id)
             doc.status = Document.STATUS_REJECTED
             doc.assigned_to = doc.created_by
+            doc.review_date = review_date
+            doc.review_notes = review_notes
             doc.save()
             return doc
         except Document.DoesNotExist:
@@ -44,11 +49,13 @@ class DocumentActionsAPIView(APIView):
                 {"error": "Document not found."}, status=status.HTTP_404_NOT_FOUND
             )
 
-    def approve_document(self, document_id):
+    def approve_document(self, document_id, review_notes, review_date):
         try:
             doc = Document.objects.get(document_id=document_id)
             doc.status = Document.STATUS_APPROVED
             doc.assigned_to = doc.created_by
+            doc.review_date = review_date
+            doc.review_notes = review_notes
             doc.save()
             return doc
         except Document.DoesNotExist:

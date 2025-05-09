@@ -8,6 +8,7 @@ import {
   Save,
   Loader2,
 } from 'lucide-react';
+import { PDFDocument } from 'pdf-lib';
 import { 
   Card, 
   CardContent, 
@@ -34,21 +35,40 @@ import DocumentsList from '../../../components/documents/DocumentsList';
 import DocumentDetails from '../../../components/documents/DocumentDetails';
 import SignatureCanvas from '../../../components/documents/SignatureCanvas';
 import DocumentsApi from '@/api/DocumentsApi';
+import { getAccessToken, useAuthContext } from '@/contexts/AuthContext';
 
 export default function Sign() {
   const { userData } = useAuthContext();
 
   const [documents, setDocuments] = useState([]);
+  console.log("documents: ", documents)
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
+  const [sigFile, setSigFile] = useState<File|null>(null)
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [showSignForm, setShowSignForm] = useState(false);
   const [filterPriority, setFilterPriority] = useState('all');
   const [signingInProgress, setSigningInProgress] = useState(false);
   const [signatureData, setSignatureData] = useState('');
   const [signatureNotes, setSignatureNotes] = useState('');
+
+  useEffect(() => {
+      const fetchData = async () => {
+        setLoading(true);
+        try {
+          const {data} = await DocumentsApi.list(); 
+          setDocuments(data);
+        } catch (error) {
+          console.error('Error fetching data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
   
+      fetchData();
+    }, []);
+
   const handleSignDocument = async () => {
     if (!signatureData) {
       alert('Please provide a signature before submitting');
@@ -119,6 +139,57 @@ export default function Sign() {
     
     return filtered;
   };
+
+  const handleApplySignature = async () => {
+    if (!selectedDocument || !sigFile) return
+    setLoading(true)
+    try {
+      // fetch latest version (last approved)
+      const latest = selectedDocument?.versions?.slice(-1)[0]
+      const res = await fetch(latest.download_url, {
+        headers: { Authorization: `Bearer ${getAccessToken()}` }
+      })
+      if (!res.ok) throw new Error('Download failed')
+      const pdfBytes = await res.arrayBuffer()
+      const sigBytes = await sigFile.arrayBuffer()
+
+      const pdfDoc = await PDFDocument.load(pdfBytes)
+      const image = sigFile.type === 'image/png'
+        ? await pdfDoc.embedPng(sigBytes)
+        : await pdfDoc.embedJpg(sigBytes)
+      const page = pdfDoc.getPages()[0]
+      const { width, height } = page.getSize()
+      const scale = 0.25
+      const dims = image.scale(scale)
+      page.drawImage(image, {
+        x: width - dims.width - 50,
+        y: 50,
+        width: dims.width,
+        height: dims.height,
+      })
+      const signedBytes = await pdfDoc.save()
+
+      // upload
+      const blob = new Blob([signedBytes], { type: 'application/pdf' })
+      const file = new File([blob], `signed-${selectedDocument.title}.pdf`, { type: 'application/pdf' })
+      const form = new FormData()
+      form.append('file', file)
+      await DocumentsApi.createVersion(selectedDocument.document_id, form)
+      await DocumentsApi.esign(selectedDocument.document_id)
+
+      // refresh
+      const { data } = await DocumentsApi.get(selectedDocument.document_id)
+      setSelectedDocument(data)
+      setDocuments(docs => docs.map(d => d.document_id === data.document_id ? data : d))
+
+      setShowSignForm(false)
+      setSigFile(null)
+    } catch (e:any) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
   
   const handleOpenDocument = (document) => {
     setSelectedDocument(document);
@@ -317,74 +388,46 @@ export default function Sign() {
             
             <CardContent>
               {showSignForm ? (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium">Sign Document</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Please add your signature to complete this document
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Draw your signature</label>
-                      <div className="border rounded-lg p-4">
-                        <SignatureCanvas 
-                          onSign={setSignatureData}
-                          width={600}
-                          height={200}
-                        />
-                      </div>
-                      
-                      <div className="flex justify-end">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setSignatureData('')}
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Notes (optional)</label>
-                      <Textarea
-                        value={signatureNotes}
-                        onChange={(e) => setSignatureNotes(e.target.value)}
-                        placeholder="Add any notes about your signature or this document..."
-                        className="min-h-[100px]"
-                      />
-                    </div>
-                    
-                    <div className="flex justify-end gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowSignForm(false)}
-                        disabled={signingInProgress}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleSignDocument}
-                        disabled={signingInProgress || !signatureData}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {signingInProgress ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Signing...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Complete Signature
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                 <div className="space-y-6">
+                 <div>
+                   <h3 className="text-lg font-medium">Upload Signature Image</h3>
+                   <p className="text-sm text-gray-500 mt-1">
+                     Select a PNG or JPG of your signature
+                   </p>
+                 </div>
+                 <div className="space-y-4">
+                     <Input
+                       type="file"
+                       accept="image/png, image/jpeg"
+                       onChange={e => setSigFile(e.target.files?.[0] ?? null)}
+                     />
+                   <Textarea
+                     value={''}
+                     readOnly
+                     placeholder="Preview not available"
+                     className="min-h-[100px]"
+                   />
+                 </div>
+                 <div className="flex justify-end gap-3">
+                   <Button
+                     variant="outline"
+                     onClick={() => setShowSignForm(false)}
+                     disabled={loading}
+                   >
+                     Cancel
+                   </Button>
+                   <Button
+                     onClick={handleApplySignature}
+                     disabled={loading || !sigFile}
+                     className="bg-blue-600 hover:bg-blue-700 gap-1"
+                   >
+                     {loading
+                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing...</>
+                       : <><Save className="h-4 w-4" /> Complete Signature</>
+                     }
+                   </Button>
+                 </div>
+               </div>
               ) : (
                 <DocumentDetails document={selectedDocument} />
               )}

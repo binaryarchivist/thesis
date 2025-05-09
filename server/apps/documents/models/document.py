@@ -47,11 +47,13 @@ class Document(BaseModel):
         User, on_delete=models.CASCADE, related_name="assigned_to"
     )
     reviewer = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="rewiewer"
+        User, on_delete=models.CASCADE, related_name="reviewer"
     )
     priority = models.CharField(choices=document_priority_choices, max_length=20)
     tags = ArrayField(models.CharField(max_length=50), blank=True, null=True)
     document_type = models.CharField(max_length=50, blank=True, null=True)
+    review_notes = models.TextField(blank=True, null=True)
+    review_date = models.DateTimeField(blank=True, null=True)
     
     class Meta:
         db_table = "documents"

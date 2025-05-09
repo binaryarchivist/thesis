@@ -1,3 +1,4 @@
+from pathlib import Path
 from apps.documents.models import Document
 from apps.documents.models.document_version import DocumentVersion
 from apps.user.models.user import User
@@ -48,8 +49,10 @@ class DocumentListAPIView(APIView):
         },
     )
     def get(self, request):
-        docs = Document.objects.filter()
+        docs = Document.objects.all().order_by("-created_at")
         data = []
+   
+            
         for doc in docs:
             obj = {
                 "document_id": str(doc.document_id),
@@ -60,7 +63,30 @@ class DocumentListAPIView(APIView):
                 "assigned_to": doc.assigned_to.email,
                 "status": doc.status,
                 "updated_at": doc.updated_at.isoformat(),
+                "reviewer_id": doc.reviewer.user_id,
+                "reviewer": doc.reviewer.email,
+                "assignee_id": doc.assigned_to.user_id,
+                "document_type": doc.document_type, 
+                "priority": doc.priority,
+                "tags": doc.tags,
+                "review_notes": doc.review_notes,
             }
+            
+            versions = []
+            for v in doc.versions.order_by("version_number"):
+                filename = Path(v.file.name).name
+                # build a full URL to the media file
+                url = request.build_absolute_uri(v.file.url)
+                versions.append(
+                    {
+                        "version_number": v.version_number,
+                        "filename": filename,
+                        "download_url": url,
+                        "created_by": v.created_by.email,
+                        "created_at": v.created_at.isoformat(),
+                    }
+                )
+            obj["versions"] = versions
 
             data.append(obj)
         return Response(data)
@@ -168,7 +194,7 @@ class DocumentListAPIView(APIView):
             description=description,
             created_by=request_user,
             assigned_to=assignee_user,
-            rewiewer=reviewer_user,
+            reviewer=reviewer_user,
             tags=tags,
             priority=priority,
             document_type=document_type,

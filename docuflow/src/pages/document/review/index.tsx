@@ -56,11 +56,12 @@ export default function Review() {
 
   const handleReviewSubmit = async (reviewData) => {
     try {
-      //   await Document.update(selectedDocument.id, {
-      //     ...selectedDocument,
-      //     ...reviewData,
-      //     review_date: new Date().toISOString(),
-      //   }); UPDATE DOCUMENT API TODO
+        if (reviewData.status === 'rejected') {
+          await DocumentsApi.reject(selectedDocument.document_id, reviewData.review_notes, new Date().toISOString());
+        }
+        if (reviewData.status === 'approved') {
+          await DocumentsApi.approve(selectedDocument.document_id, reviewData.review_notes, new Date().toISOString());
+        }
 
       // Refresh documents
         const {data} = await DocumentsApi.list(); // GET DOCUMENT LIST API TODO
@@ -73,10 +74,9 @@ export default function Review() {
       console.error('Error updating document:', error);
     }
   };
-
   const getPendingDocuments = () => {
     let filtered = documents.filter(
-      (doc) => doc.status === 'pending' && doc.reviewer_id === userData?.id
+      (doc) => doc.status === 'pending' && doc.reviewer_id === userData?.user_id
     );
 
     if (searchQuery) {

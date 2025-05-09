@@ -41,13 +41,14 @@ class DocumentDetailAPIView(APIView):
                 "description",
             ],
         )
+        data["document_id"] = doc.document_id
         data["created_by"] = doc.created_by.email
         data["created_at"] = doc.created_at.isoformat()
         data["status"] = doc.status
         data["tags"] = doc.tags
         data["priority"] = doc.priority
         data["reviewer"] = doc.reviewer.email
-        data["assignee"] = doc.assigned_to.email
+        data["assigned_to"] = doc.assigned_to.email
         data["assignee_id"] = doc.assigned_to.user_id
         data["reviewer_id"] = doc.reviewer.user_id
         data["document_type"] = doc.document_type if doc.document_type else None
@@ -115,6 +116,7 @@ class DocumentDetailAPIView(APIView):
             )
         doc.title = title
         doc.description = description
+        doc.status = doc.STATUS_PENDING
         doc.save()
 
         uploaded_file = request.FILES.get("file")

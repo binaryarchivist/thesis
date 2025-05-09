@@ -50,11 +50,17 @@ export default class DocumentsApi {
     return client.delete(`/documents/${id}/`);
   }
 
-  static approve(document_id: string) {
-    return client.put(`/documents/${document_id}/action/approve/`);
+  static approve(document_id: string, review_notes: string | null, review_date: string | null) {
+    return client.put(`/documents/${document_id}/action/approve/`, {
+      review_notes,
+      review_date
+    });
   }
-  static reject(document_id: string) {
-    return client.put(`/documents/${document_id}/action/reject/`);
+  static reject(document_id: string, review_notes: string | null, review_date: string | null) {
+    return client.put(`/documents/${document_id}/action/reject/`, {
+      review_notes,
+      review_date
+    });
   }
   static archive(document_id: string) {
     return client.put(`/documents/${document_id}/action/archive/`);

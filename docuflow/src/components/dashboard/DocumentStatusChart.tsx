@@ -1,15 +1,12 @@
-import React from 'react';
 import {
   PieChart,
   Pie,
   Cell,
   ResponsiveContainer,
-  Tooltip,
   Legend,
 } from 'recharts';
 
 export default function DocumentStatusChart({ data }) {
-  // Ensure data exists and has the required properties
   if (!data || typeof data !== 'object') {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center h-48">
@@ -48,14 +45,14 @@ export default function DocumentStatusChart({ data }) {
   return (
     <div className="h-48">
       <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
+        <PieChart margin={{ top: 0, right: 0, bottom: 30, left: 0 }}>
           <Pie
             data={chartData}
             cx="50%"
             cy="50%"
             innerRadius={40}
             outerRadius={70}
-            paddingAngle={2}
+            paddingAngle={10}
             dataKey="value"
             label={({ name, percent }) =>
               `${name} ${(percent * 100).toFixed(0)}%`
@@ -63,16 +60,13 @@ export default function DocumentStatusChart({ data }) {
             labelLine={false}
           >
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
+              <Cell className="mt-2" key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip
-            formatter={(value) => [
-              `${value} document${value !== 1 ? 's' : ''}`,
-              'Count',
-            ]}
-          />
-          <Legend />
+          <Legend  layout="horizontal"
+            verticalAlign="bottom"
+            align="center"
+            wrapperStyle={{ top: 'auto', bottom: 0, fontSize: '0.75rem' }} />
         </PieChart>
       </ResponsiveContainer>
     </div>
